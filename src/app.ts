@@ -1,5 +1,6 @@
 import express from "express";
 import userRoutes from "./presentation/routes/user.routes.js";
+import roleRoutes from "./presentation/routes/role.routes.js";
 
 import {
   errorHandler,
@@ -20,6 +21,8 @@ app.get("/health", (req, res) => {
 
 // Rutas de la API
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/roles", roleRoutes);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
