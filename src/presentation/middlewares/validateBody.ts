@@ -6,7 +6,6 @@ import { z } from "zod";
  * utilizando un esquema de Zod.
  */
 export function validateBody(schema: z.ZodType) {
-    
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body);
 

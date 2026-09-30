@@ -1,7 +1,7 @@
-import { Role } from "../entities/Role.js"; 
+import { Role } from "../entities/Role.js";
 
 export interface IRoleRepository {
-    findActive(): Promise<Role[]>;
-    //
-    findById(id: string): Promise<Role | null>;
+  findActive(): Promise<Role[]>;
+  //
+  findById(id: string): Promise<Role | null>;
 }
