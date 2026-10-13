@@ -1,0 +1,64 @@
+name: CI
+on:
+  # Al hacer push directo (o merge) en estas ramas: valida el resultado ya integrado
+  push:
+    branches: [develop, main]
+  # Al abrir/actualizar un PR hacia estas ramas: valida tus feature/* antes del merge.
+  # Las ramas feature/* NO necesitan trigger propio: su PR hacia develop ya las cubre.
+  pull_request:
+    branches: [develop, main]
+
+# Varios commits seguidos en el mismo PR o rama, cancela la ejecución anterior
+# dejar solo la más reciente.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Permisos mínimos: el CI solo LEE el código
+permissions:
+  contents: read
+
+jobs:
+  # Un solo job: evita repetir checkout/instalación en varios runners.
+  # No usar matrix una única versión de Node (20).
+  build-and-test:
+    name: Build and test (Node 20)
+    runs-on: ubuntu-latest             
+    timeout-minutes: 10              
+
+    steps:
+      # 1. DescargaR el código del repositorio en el runner
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. InstalaR Node.js 20 (versión fija)
+      #    cache: npm guarda las dependencias entre ejecuciones para acelerar el pipeline
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      # 4. Compila TypeScript. Si hay errores de tipos, el pipeline falla aquí
+      - name: Build TypeScript
+        run: npm run build
+
+      # 5. Ejecutar pruebas.
+      #    TEMPORAL: "npm test" actual es el placeholder de npm y falla a propósito.
+      #    Se detecta ese placeholder y se omite el paso para que el CI no salga en rojo.
+      - name: Run tests when configured
+        shell: bash
+        run: |
+          if node -e "const { scripts = {} } = require('./package.json'); process.exit(scripts.test && !scripts.test.includes('Error: no test specified') ? 0 : 1)"; then
+            npm test
+          else
+            echo "No tests are configured yet; skipping."
+          fi
