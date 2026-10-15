@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: allyu-backend
+  namespace: allyu
+spec:
+  type: ClusterIP
+  selector:
+    app: allyu-backend
+  ports:
+    - port: 80
+      targetPort: 3000
