@@ -62,3 +62,56 @@ jobs:
           else
             echo "No tests are configured yet; skipping."
           fi
+
+  # En PRs solo valida que la imagen se construye. En push a main, además la publica en GHCR.
+  docker-image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-test   # solo corre si el build y los tests pasaron
+ 
+    # Permisos de este job: leer el repo y escribir en GitHub Packages (GHCR)
+    permissions:
+      contents: read
+      packages: write
+ 
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+ 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+ 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+ 
+      # Login a GHCR con el GITHUB_TOKEN automático (no hay que crear credenciales)
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+ 
+      # Genera el nombre de la imagen (en minúsculas) y las etiquetas:
+      #   sha-<commit>  -> versión inmutable, ideal para desplegar
+      #   latest        -> última versión de main
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+ 
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
